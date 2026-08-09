@@ -1,0 +1,25 @@
+# Environment variables
+.env
+
+# Virtual environment
+fin/
+venv/
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Django database
+db.sqlite3
+
+# VS Code and IDE settings
+.vscode/
+.idea/
+
+# Static and media files
+staticfiles/
+media/
+
+# Test coverage
+.coverage
+htmlcov/
