@@ -240,3 +240,73 @@ class ResendEmailOTPView(APIView):
             },
             status=status.HTTP_200_OK,
             )
+
+
+from rest_framework_simplejwt.views import TokenObtainPairView
+
+from .serializers import LoginSerializer
+
+
+class LoginView(TokenObtainPairView):
+    serializer_class = LoginSerializer
+
+
+
+from rest_framework import generics
+
+from .serializers import (
+    RegisterSerializer,
+    VerifyOTPSerializer,
+    ResendOTPSerializer,
+)
+
+
+class RegisterView(generics.CreateAPIView):
+
+    serializer_class = RegisterSerializer
+
+
+class VerifyOTPView(generics.GenericAPIView):
+
+    serializer_class = VerifyOTPSerializer
+
+    def post(self, request):
+
+        serializer = self.get_serializer(
+            data=request.data
+        )
+
+        serializer.is_valid(
+            raise_exception=True
+        )
+
+        return Response(
+            {
+                "message": (
+                    "Account verified successfully."
+                )
+            }
+        )
+
+
+class ResendOTPView(generics.GenericAPIView):
+
+    serializer_class = ResendOTPSerializer
+
+    def post(self, request):
+
+        serializer = self.get_serializer(
+            data=request.data
+        )
+
+        serializer.is_valid(
+            raise_exception=True
+        )
+
+        return Response(
+            {
+                "message": (
+                    "OTP sent successfully."
+                )
+            }
+        )

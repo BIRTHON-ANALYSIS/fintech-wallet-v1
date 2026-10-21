@@ -40,7 +40,9 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
-    'apps.accounts'
+    'apps.accounts',
+    'apps.wallets'
+
 ]
 
 MIDDLEWARE = [
@@ -72,6 +74,10 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'config.wsgi.application'
 
+REDIS_URL = env(
+    "REDIS_URL",
+    default="redis://127.0.0.1:6379/1"
+)
 
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
@@ -110,7 +116,11 @@ REST_FRAMEWORK = {
         "rest_framework.permissions.IsAuthenticated",
     ],
 }
+
 AUTH_USER_MODEL = "accounts.User"
+
+
+
 # Internationalization
 # https://docs.djangoproject.com/en/6.0/topics/i18n/
 

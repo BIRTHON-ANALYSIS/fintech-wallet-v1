@@ -2,10 +2,12 @@ from django.urls import path
 
 from .views import (
     RegisterView,
+    LoginView,
     LogoutView,
     UserProfileView,
     VerifyEmailOTPView,
-    ResendEmailOTPView,#    PasswordResetRequestView,    PasswordResetConfirmView,   
+    ResendEmailOTPView
+    #    PasswordResetRequestView,    PasswordResetConfirmView,   
    
 )
 
@@ -22,7 +24,9 @@ urlpatterns = [
     path("verify-email/", VerifyEmailOTPView.as_view(), name="verify-email"),
     path("resend-otp/", ResendEmailOTPView.as_view(), name="resend-otp"),
 
-    # Password Reset    path(        "password-reset/",        PasswordResetRequestView.as_view(),        name="password-reset",    ),
+    # Password Reset
+    path("login/", LoginView.as_view(), name="login"),
+
     #path(
     #    "password-reset/confirm/",
      #   PasswordResetConfirmView.as_view(),
