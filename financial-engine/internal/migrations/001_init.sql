@@ -1,4 +1,4 @@
-
+```sql
 CREATE TABLE wallets (
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL,

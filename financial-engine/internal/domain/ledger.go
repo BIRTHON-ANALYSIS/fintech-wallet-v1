@@ -57,15 +57,21 @@ func (e LedgerEntry) Validate() error {
 
 // ValidateBalancedEntries ensures debits equal credits
 // for a single-currency transaction.
+
 func ValidateBalancedEntries(entries []LedgerEntry) error {
 	if len(entries) < 2 {
-		return errors.New("a ledger transaction requires at least two entries")
+		return errors.New(
+			"a ledger transaction requires at least two entries",
+		)
 	}
 
 	var debitTotal int64
 	var creditTotal int64
+
 	currency := entries[0].Currency
 	transactionID := entries[0].TransactionID
+
+	const maxInt64 = int64(^uint64(0) >> 1)
 
 	for _, entry := range entries {
 		if err := entry.Validate(); err != nil {
@@ -73,22 +79,26 @@ func ValidateBalancedEntries(entries []LedgerEntry) error {
 		}
 
 		if !strings.EqualFold(entry.Currency, currency) {
-			return errors.New("ledger entries must use the same currency")
+			return errors.New(
+				"ledger entries must use the same currency",
+			)
 		}
 
 		if entry.TransactionID != transactionID {
-			return errors.New("ledger entries must belong to the same transaction")
+			return errors.New(
+				"ledger entries must belong to the same transaction",
+			)
 		}
 
 		switch entry.Side {
 		case Debit:
-			if debitTotal > int64(^uint64(0)>>1)-entry.AmountMinor {
+			if debitTotal > maxInt64-entry.AmountMinor {
 				return errors.New("debit total overflow")
 			}
 			debitTotal += entry.AmountMinor
 
 		case Credit:
-			if creditTotal > int64(^uint64(0)>>1)-entry.AmountMinor {
+			if creditTotal > maxInt64-entry.AmountMinor {
 				return errors.New("credit total overflow")
 			}
 			creditTotal += entry.AmountMinor
@@ -96,7 +106,9 @@ func ValidateBalancedEntries(entries []LedgerEntry) error {
 	}
 
 	if debitTotal != creditTotal {
-		return errors.New("ledger transaction is unbalanced")
+		return errors.New(
+			"ledger transaction is unbalanced",
+		)
 	}
 
 	return nil

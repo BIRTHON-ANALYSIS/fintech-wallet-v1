@@ -11,6 +11,10 @@ import (
 	"sync/atomic"
 	"syscall"
 	"time"
+
+	"financial-engine/internal/database"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type HealthResponse struct {
@@ -29,7 +33,6 @@ func requestIDMiddleware(next http.Handler) http.Handler {
 		w.Header().Set("X-Request-ID", requestID)
 
 		start := time.Now()
-
 		next.ServeHTTP(w, r)
 
 		slog.Info(
@@ -67,15 +70,45 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-
-	response := HealthResponse{
+	writeJSON(w, http.StatusOK, HealthResponse{
 		Status:  "healthy",
 		Service: "financial-engine",
-	}
+	})
+}
 
-	if err := json.NewEncoder(w).Encode(response); err != nil {
-		slog.Error("failed to encode health response", "error", err)
+func readinessHandler(pool *pgxpool.Pool) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+		defer cancel()
+
+		if err := pool.Ping(ctx); err != nil {
+			slog.Error("database readiness check failed", "error", err)
+			writeJSON(w, http.StatusServiceUnavailable, map[string]string{
+				"status": "not_ready",
+				"reason": "database unavailable",
+			})
+			return
+		}
+
+		writeJSON(w, http.StatusOK, map[string]string{
+			"status":   "ready",
+			"service":  "financial-engine",
+			"database": "connected",
+		})
+	}
+}
+
+func writeJSON(w http.ResponseWriter, status int, value any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+
+	if err := json.NewEncoder(w).Encode(value); err != nil {
+		slog.Error("failed to encode JSON response", "error", err)
 	}
 }
 
@@ -88,8 +121,25 @@ func main() {
 		port = "8081"
 	}
 
+	// Connect to PostgreSQL before accepting requests.
+	startupCtx, cancelStartup := context.WithTimeout(
+		context.Background(),
+		10*time.Second,
+	)
+	pool, err := database.OpenPostgres(startupCtx)
+	cancelStartup()
+
+	if err != nil {
+		slog.Error("PostgreSQL initialization failed", "error", err)
+		os.Exit(1)
+	}
+	defer pool.Close()
+
+	slog.Info("PostgreSQL connection pool initialized")
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", healthHandler)
+	mux.HandleFunc("/ready", readinessHandler(pool))
 
 	server := &http.Server{
 		Addr:              ":" + port,
@@ -125,11 +175,11 @@ func main() {
 			context.Background(),
 			10*time.Second,
 		)
-
 		defer cancel()
 
 		if err := server.Shutdown(ctx); err != nil {
 			slog.Error("graceful shutdown failed", "error", err)
+
 			if closeErr := server.Close(); closeErr != nil {
 				slog.Error("forced server close failed", "error", closeErr)
 			}
