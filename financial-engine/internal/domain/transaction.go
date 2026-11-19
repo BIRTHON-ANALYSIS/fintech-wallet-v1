@@ -76,3 +76,55 @@ func (t Transaction) Validate() error {
 
 	return nil
 }
+
+
+var ErrInvalidStatusTransition = errors.New(
+	"invalid transaction status transition",
+)
+
+// TransitionTo validates and applies an allowed state change.
+// It does not persist the change or post ledger entries.
+func (t *Transaction) TransitionTo(
+	next TransactionStatus,
+) error {
+	if t == nil {
+		return errors.New("transaction cannot be nil")
+	}
+
+	if err := t.Validate(); err != nil {
+		return err
+	}
+
+	if t.Status == next {
+		// Repeated delivery of the same state is harmless.
+		return nil
+	}
+
+	allowed := false
+
+	switch t.Status {
+	case StatusPending:
+		allowed = next == StatusProcessing ||
+			next == StatusFailed
+
+	case StatusProcessing:
+		allowed = next == StatusSucceeded ||
+			next == StatusFailed
+
+	case StatusSucceeded:
+		allowed = next == StatusReversed
+
+	case StatusFailed, StatusReversed:
+		allowed = false
+	}
+
+	if !allowed {
+		return ErrInvalidStatusTransition
+	}
+
+	t.Status = next
+	t.UpdatedAt = time.Now().UTC()
+
+	return nil
+}
+
